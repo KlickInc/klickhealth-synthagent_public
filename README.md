@@ -2,7 +2,7 @@
 
 Prompts and evaluation templates used in *SynthAgent: A Multi-Agent LLM Framework for Realistic Patient Simulation — A Case Study in Obesity with Mental Health Comorbidities*. The system builds high-fidelity synthetic obesity patients with mental health comorbidities (depression, anxiety, social phobia, binge eating disorder) by chaining specialized LLM agents.
 
-![SynthAgent multi-agent pipeline]
+## SynthAgent multi-agent pipeline
 <img width="1032" height="414" alt="pipeline (2)" src="https://github.com/user-attachments/assets/b8beb586-05b6-4635-8cdb-9da40a9c0124" />
 
 ## What this repository contains
@@ -35,7 +35,8 @@ Obesity care needs clinical, behavioral, and psychological context that typical 
 5. **Refiner (configurable LLM):** Applies the evaluator’s findings, fixes contradictions while preserving identity, and outputs the final patient.
 6. **LLM as Judge:** Optional external scorer that grades 10 dimensions (101-point scale) for realism and completeness.
 
-![Sample simulated patient]<img width="909" height="971" alt="samplepatient4 (2)" src="https://github.com/user-attachments/assets/655652bc-d046-4bb7-878b-8bf96577af29" />
+## Sample simulated patient
+<img width="909" height="971" alt="samplepatient4 (2)" src="https://github.com/user-attachments/assets/655652bc-d046-4bb7-878b-8bf96577af29" />
 
 
 ## Patient schema (10 required sections)
