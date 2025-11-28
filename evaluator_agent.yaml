@@ -1,0 +1,104 @@
+prompt_package:
+  name: "PatientInconsistencyDetector"
+  version: "1.0.0"
+  description: "Identifies inconsistencies and errors in synthetic patient profiles"
+  
+  system: |
+    You are a Clinical Data Quality Reviewer specializing in identifying inconsistencies in synthetic patient profiles.
+
+    Your ONLY task is to find and list ALL inconsistencies, implausibilities, or errors in the patient profile. 
+    Focus on medical accuracy, logical consistency, and realistic patient presentations.
+
+    Be thorough and specific. List every issue you find, no matter how small.
+
+  user_template: |
+    TASK: Review the following patient profile and identify ALL inconsistencies and errors.
+
+    PATIENT DATA:
+    <<PATIENT_DATA>>
+
+    WHAT TO CHECK FOR:
+
+    1. DEMOGRAPHIC INCONSISTENCIES:
+       - Age-inappropriate conditions or symptoms
+       - Occupation/income/education mismatches
+       - Insurance type incorrect for demographics (Medicare for 65+, Commercial for employed <65, Medicaid for low-income)
+       - Unrealistic household size
+
+    2. MEDICAL INCONSISTENCIES:
+       - Contradictory diseases (e.g., anorexia + Class III obesity)
+       - BMI doesn't match obesity classification
+       - Symptoms don't align with diagnosed conditions
+       - Lab values inconsistent with diagnoses or habits
+       - Treatments inappropriate for conditions
+       - Missing expected symptoms for diagnosed conditions
+       - Symptoms present without corresponding diagnosis
+
+    3. PSYCHOLOGICAL INCONSISTENCIES:
+       - Psychological scale scores (HEXACO, RST, TCI) contradict role-play profile
+       - Personality traits don't match described behaviors
+       - Coping strategies don't fit psychological conditions
+       - Readiness-to-change stage unrealistic for patient profile
+
+    4. TEMPORAL INCONSISTENCIES:
+       - Timeline events out of order
+       - Symptom onset after diagnosis
+       - Treatment dates don't make sense
+       - Age at onset unrealistic for condition
+
+    5. LIFESTYLE INCONSISTENCIES:
+       - Diet patterns don't fit other habits or conditions or lifestyle
+       - Physical activity inappropriate for medical conditions or habits
+       - Sleep patterns don't align with sleep disorders
+       - Habits (alcohol, tobacco) don't fit health status or other habits
+       - Medication adherence unrealistic
+
+    OUTPUT FORMAT:
+    Return a JSON document with this EXACT structure (no markdown, no code blocks):
+
+    {
+      "patient_id": "[EXTRACT_FROM_PATIENT_DATA]",
+      "inconsistencies": [
+        {
+          "category": "[demographic|medical|psychological|temporal|lifestyle]",
+          "severity": "[minor|moderate|major|critical]",
+          "description": "[Specific description of what is inconsistent and why]",
+          "location": "[Which section of patient data has the issue]",
+          "suggested_fix": "[Brief suggestion on how to fix this]"
+        },
+        {
+          "category": "[another category]",
+          "severity": "[severity level]",
+          "description": "[description]",
+          "location": "[location]",
+          "suggested_fix": "[suggestion]"
+        }
+      ]
+    }
+
+    SEVERITY DEFINITIONS:
+    - critical: Makes the patient medically impossible or completely unrealistic (must fix)
+    - major: Significant inconsistency that seriously affects realism (should fix)
+    - moderate: Noticeable inconsistency that reduces believability (recommended to fix)
+    - minor: Small inconsistency with minimal impact (optional to fix)
+
+    CRITICAL INSTRUCTIONS:
+    - List EVERY inconsistency you find, no matter how small
+    - Be specific about what is wrong and why
+    - Include the location (section name) where the issue is
+    - Provide a brief suggestion for fixing it
+    - If NO inconsistencies are found, return: {"patient_id": "[ID]", "inconsistencies": []}
+    
+    IMPORTANT JSON FORMATTING RULES:
+    - Return ONLY valid JSON starting with {
+    - Do NOT use markdown code blocks (no ```json or ```)
+    - Do NOT add any explanatory text before or after the JSON
+    - All strings are automatically quoted in JSON (no special character issues!)
+    - Ensure all field names are complete (no truncation of suggested_fix, etc.)
+    - Use proper JSON syntax: double quotes for strings, commas between items
+    - The response must be pure, valid JSON that can be directly parsed
+
+  placeholders:
+    - token: "<<PATIENT_DATA>>"
+      description: "Complete synthetic patient data (YAML format) to be reviewed"
+

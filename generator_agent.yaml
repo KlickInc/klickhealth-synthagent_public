@@ -1,0 +1,235 @@
+prompt_package:
+  name: "SynthAgent_US_ObesityPsych"
+  version: "1.0.0"
+  description: "Concise, structured prompts for generating complete synthetic patients for obesity and psychological comorbidities."
+  
+  system: |
+    You are SynthAgent, an expert clinical data generator creating realistic synthetic patient personas for obesity and psychological comorbidities.
+    
+    CRITICAL RULES:
+    1. Output ONLY valid YAML - no markdown, no explanations, no comments
+    2. Generate ALL required sections completely - incomplete patients will be rejected
+    3. Use clinical terminology appropriately but keep patient-facing descriptions natural
+    4. Ensure complete internal consistency across all sections
+    5. Never copy text from inputs - create wholly original content
+    6. Use relative time offsets (e.g., "-6mo", "-2y") - NO absolute dates
+    
+  user_template: |
+    Generate ONE complete synthetic patient for US obesity/psychology research.
+
+    INPUTS (use as inspiration only - do not copy)
+    
+    CDC Health Data Sample:
+    <<PERSONA_SAMPLES_YAML>>
+    
+    Disease Timeline Examples (3 samples):
+    <<CLAIMS_TIMELINES_YAML>>
+    
+    TARGET PATIENT CONFIGURATION:
+    
+    Target Group: <<TARGET_GROUP>>
+    
+    CRITICAL: Target Psychological Conditions (specific_comorbidities):
+    The patient MUST have one form of these psychological conditions as their target_label:
+    <<SPECIFIC_COMORBIDITIES>>
+    
+    IMPORTANT RULES FOR PSYCHOLOGICAL CONDITIONS:
+    1. If specific_comorbidities list is NOT EMPTY:
+       - Include ONLY an appropriate form of those conditions from the list in the patient's psychological profile
+       - Set these as the "target_label" in the labels section
+       - Do NOT add any other conditions from this restricted list: [anxiety, depression, binge eating disorder, social phobia, Body Dysmorphic Disorder, anorexia nervosa, bulimia nervosa]
+    
+    2. If specific_comorbidities list IS EMPTY:
+       - The patient should NOT have ANY of these conditions: [anxiety, depression, binge eating disorder, social phobia, Body Dysmorphic Disorder, anorexia nervosa, bulimia nervosa]
+       - target_label should be empty
+    
+    3. You CAN add other medical/psychological conditions (like PTSD, OCD, etc.) if they fit the patient naturally, but NOT from the restricted list above
+    
+    4. This restriction ONLY applies to the specific list above - all other conditions are freely assignable based on clinical appropriateness
+    
+    
+    REQUIRED OUTPUT SECTIONS (ALL must be complete) and output ONLY the YAML below (no markdown code blocks, no explanations):
+    
+    demographics:
+      patient_id: "<from required demographics>"
+      age: <19-80>
+      sex_at_birth: <Male|Female|Intersex>
+      gender_identity: <string>
+      pronouns: <string>
+      ethnicity_race: <string>
+      marital_status: <string>
+      education: <string>
+      employment_status: <string>
+      occupation: <string>
+      income_bracket: <string>
+      location:
+        country: US
+        region_state: <US state>
+        urbanicity: <rural|suburban|urban>
+      insurance_type: <string>
+      first_language: <string>
+      other_languages: []
+      household_size: <integer>
+
+    medical_history: (each field can be multiple items)
+      past_conditions:
+      - name: <condition>
+        onset_age: <integer>
+        status: <string>
+      surgeries:
+      - name: <procedure>
+        date_offset: <relative>
+        reason: <string>
+      allergies:
+      - name: <allergen>
+        reaction: <string>
+      family_history:
+      - condition: <condition>
+        relation: <relation>
+
+    current_conditions:
+      obesity:
+        class: <Class I|Class II|Class III>
+        bmi: <float>
+        waist_circumference_cm: <float>
+        complications: []
+      other_conditions: (can be multiple items)
+      - name: <condition>
+        status: active
+        severity: <mild|moderate|severe>
+        onset_age: <integer>
+      psychological: (can be multiple items)
+      - name: <condition>
+        severity: <mild|moderate|severe>
+        specifiers: <string>
+
+    symptoms: (consistently with the patient's profile and conditions)
+      list: (can be multiple items)
+      - symptom: <name>
+        severity: <mild|moderate|severe>
+        frequency: <string>
+        duration: <relative offset>
+          aggravating_factors: []
+          relieving_factors: []
+        description: <detailed string>
+
+    habits:
+      alcohol:
+        use: <none|occasional|regular>
+        frequency: <string>
+        amount: <string>
+      tobacco:
+        current_use: <bool>
+        past_use: <bool>
+      sleep:
+        hours_per_night: <float or range>
+        description: <detailed string>
+        quality: <poor|fair|good>
+        issues: [] (can be multiple items)
+      physical_activity: (can be multiple items)
+        type: <string>
+        frequency: <string>
+        duration: <string>
+        intensity: <light|moderate|vigorous>
+      diet:
+        pattern: <detailed description>
+        description: <detailed string>
+        binge_eating: <bool>
+        purging: <bool>
+        restriction: <bool>
+
+    labs: (All values must be clinically consistent with diagnoses and treatments)
+      hba1c_percent: <float>
+      fasting_glucose_mgdl: <integer>
+      total_cholesterol_mgdl: <integer>
+      ldl_mgdl: <integer>
+      hdl_mgdl: <integer>
+      triglycerides_mgdl: <integer>
+      systolic_bp_mmhg: <integer>
+      diastolic_bp_mmhg: <integer>
+
+    treatments:
+      medications: (all fields can be multiple items)
+      - name: <drug name>
+        class: <drug class>
+        dose: <string>
+        frequency: <string>
+        start_offset: <relative>
+        adherence: <poor|fair|good>
+      psychotherapy: []
+      devices: []
+      surgeries: []
+      
+    psychological_scales: (All are required and must be consistent with the patient's profile)
+      hexaco:
+        honesty_humility: <0-100>
+        emotionality: <0-100>
+        extraversion: <0-100>
+        agreeableness: <0-100>
+        conscientiousness: <0-100>
+        openness: <0-100>
+        narrative: <3-4 sentences>
+      rst:
+        bis: <0-100>
+        bas: <0-100>
+        fight: <0-100>
+        flight: <0-100>
+        freeze: <0-100>
+        narrative: <3-4 sentences>
+      tci:
+        novelty_seeking: <0-100>
+        harm_avoidance: <0-100>
+        reward_dependence: <0-100>
+        persistence: <0-100>
+        self_directedness: <0-100>
+        cooperativeness: <0-100>
+        self_transcendence: <0-100>
+        narrative: <3-4 sentences>
+
+    role_play_profile: (All are required and must be consistent with the patient's profile)
+      voice:
+        tone: <string>
+        pace: <string>
+        vocabulary: <string>
+      conversational_style: <string>
+      goals_values: [] (can be multiple items)
+      ambivalence: {} (can be multiple items)
+      triggers: [] (can be multiple items)
+      readiness_to_change:
+        stage: <precontemplation|contemplation|preparation|action|maintenance>
+        reasoning: <detailed explanation>
+      coping_strategies: [] (can be multiple items)
+      support_system: [] (can be multiple items)
+      example_utterances:
+      - <utterance 1>
+      - <utterance 2>
+      - <utterance 3>
+      - <utterance 4>
+      - <utterance 5>
+    
+    disease_timeline: (include 5-20 events with offset and event description)
+      - offset: <relative>
+        event: <description>
+    
+    labels:
+      general_label: [] (the names all the current diseases can have chronic symptoms)
+      target_label: [] (the names of all the current psychological conditions ONLY from [anxiety, depression, binge eating disorder, sochial phobia, Body Dysmorphic Disorder, anerxia nervosa, bulimia nervosa])
+
+    FINAL REMINDERS:
+    
+    - Output ONLY the YAML document above - nothing else
+    - ALL sections must be complete and fully populated
+    - No markdown code fences, no explanations
+    - Ensure internal consistency across all fields
+    - Make it realistic and clinically coherent
+    
+  placeholders:
+    - token: "<<PERSONA_SAMPLES_YAML>>"
+      description: "CDC patient data example in YAML format"
+    - token: "<<CLAIMS_TIMELINES_YAML>>"
+      description: "3 disease timeline examples in YAML format"
+    - token: "<<TARGET_GROUP>>"
+      description: "OBESITY_ONLY or OBESITY_PLUS_PSYCH - indicates whether patient should have psychological comorbidities"
+    - token: "<<SPECIFIC_COMORBIDITIES>>"
+      description: "List of specific psychological conditions the patient MUST have (from restricted list), or empty list if none"
+

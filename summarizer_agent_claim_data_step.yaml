@@ -1,0 +1,122 @@
+prompt_package:
+  name: "SummarizerAgent_InputDataStep"
+  version: "1.0.0"
+  description: "Prompt for Gemini to find 3 best matching disease timelines from 20 samples and create summarized disease progression timelines"
+  
+  system: |
+    You are analyzing disease timeline data to find the BEST MATCHES for creating a synthetic patient.
+
+  user_template: |
+    You are analyzing disease timeline data to find the BEST MATCHES for creating a synthetic patient.
+
+    PATIENT INFORMATION (already determined):
+    <<PATIENT_INFO>>
+
+    CDC HEALTH DATA (from selected sample):
+    <<CDC_DATA>>
+
+    You have <<NUM_TIMELINES>> disease timeline samples (showing medical events with dates over time).
+
+    YOUR TASK:
+    1. Review ALL <<NUM_TIMELINES>> timelines and select the 3 that BEST MATCH the patient's profile:
+       - Age-appropriate conditions
+       - Gender-appropriate conditions
+       - BMI/obesity-related conditions matching the BMI range
+       - Comorbidities matching the specific_comorbidities list
+       - Similar health patterns to the CDC data
+
+    2. For each selected timeline, CREATE A SUMMARIZED TIMELINE showing KEY DISEASE PROGRESSION MILESTONES:
+       
+       A. FILTER at the DIAGNOSIS LEVEL (split by " - " and remove non-essential diagnoses):
+          - KEEP: Chronic conditions, serious diagnoses, mental health conditions, obesity-related conditions, BMI measurements, surgeries, hospitalizations
+          - REMOVE: Routine vaccines, minor acute conditions (colds, pharyngitis), administrative encounters, COVID exposure without illness
+       
+       B. CREATE A TIMELINE SUMMARY with RELATIVE DATES showing PROGRESSION MILESTONES:
+          - Calculate RELATIVE TIME from the most recent event (use as reference point)
+          - Express time as: "-10yr", "-5yr", "-2yr", "-18mo", "-6mo", "-2mo" (years for long periods, months for recent)
+          - Identify KEY MILESTONE EVENTS that show disease progression:
+            * Chronic conditions
+            * New chronic conditions that develop
+            * Disease progression (e.g., diabetes → diabetic kidney disease)
+            * Major complications or changes in disease status
+            * Surgeries or procedures
+            * Changes in BMI classification
+          - Combine/consolidate repetitive events into single milestone entries
+          - Include ALL important milestone events (no limit on number of events)
+       
+       C. FORMAT each milestone as: "-Xyr/-Xmo: Brief narrative summary of what happened"
+          - Use NARRATIVE DESCRIPTIONS, not lists of diagnoses
+          - Summarize the clinical importance in 1-2 sentences
+          - Focus on what changed or what was newly diagnosed
+       
+       Example Input (many repetitive events):
+       - 2015-03-12: Type 2 diabetes without complications - Hyperlipidemia - Essential hypertension
+       - 2015-04-15: Type 2 diabetes without complications - Hyperlipidemia - Essential hypertension  
+       - 2016-01-10: Type 2 diabetes without complications - Hyperlipidemia - Essential hypertension
+       - 2017-08-20: Type 2 diabetes with chronic kidney disease - Hyperlipidemia - Essential hypertension - CKD stage 3
+       - 2018-02-10: Type 2 diabetes with chronic kidney disease - CKD stage 3
+       - 2019-01-15: Obstructive sleep apnea
+       - 2020-06-10: Type 2 diabetes with chronic kidney disease - CKD stage 4
+       ... (many more similar events)
+       
+       Example Output (summarized timeline with relative dates and narratives):
+       - "-10yr: Initial diagnosis of Type 2 diabetes, hyperlipidemia, and essential hypertension"
+       - "-8yr: Diabetes progressed to diabetic chronic kidney disease stage 3"
+       - "-6yr: Diagnosed with obstructive sleep apnea, likely related to obesity"
+       - "-5yr: Chronic kidney disease progressed to stage 4"
+       - "-3yr: Underwent cholecystectomy for gallbladder disease with acute pancreatitis"
+       - "-18mo: Developed bilateral knee osteoarthritis with significant functional limitations"
+       - "-6mo: New diagnosis of atherosclerotic heart disease with coronary calcification"
+       ... (include ALL significant milestones)
+
+    3. Return the SUMMARIZED TIMELINE (ALL milestone events with RELATIVE DATES and NARRATIVE SUMMARIES), NOT the full raw timeline.
+
+    Here are the timeline samples:
+
+    <<TIMELINES_YAML>>
+
+    Respond in YAML format:
+    ```yaml
+    selected_timelines:
+      - original_index: 0-19
+        timeline:
+          - "-10yr: Initial diagnosis of chronic conditions (specify what was diagnosed)"
+          - "-8yr: Disease progression or new complication developed (describe the change)"
+          - "-5yr: Major event or new diagnosis (summarize what happened)"
+          - "-2yr: Another significant milestone (narrative description)"
+          - "-6mo: Recent development (what changed)"
+          # ... (include ALL significant milestone events)
+      - original_index: 0-19
+        timeline:
+          - "-12yr: Initial presentation with specific conditions"
+          - "-9yr: Progression or complication"
+          - "-4yr: New chronic condition diagnosed"
+          # ... (include ALL significant milestone events)
+      - original_index: 0-19
+        timeline:
+          - "-8yr: Starting conditions and initial diagnoses"
+          - "-5yr: Disease progression milestone"
+          # ... (include ALL significant milestone events)
+    ```
+
+    CRITICAL REQUIREMENTS:
+    - Include ALL KEY MILESTONE EVENTS (no limit on number of events)
+    - Use RELATIVE DATES: "-10yr", "-5yr", "-18mo", "-6mo" (relative to most recent event)
+    - Use NARRATIVE SUMMARIES: Describe what happened, don't just list diagnoses separated by " - "
+    - Filter at the DIAGNOSIS level (remove non-essential diagnoses like vaccines, minor acute conditions)
+    - Show PROGRESSION over time (initial diagnosis → complications → new conditions)
+    - Consolidate repetitive events - don't repeat the same stable conditions
+    - Focus on chronic conditions, disease progression, major events, and obesity-related complications
+    - Make summaries CONCISE but INFORMATIVE (1-2 sentences per milestone)
+    - Respond ONLY with valid YAML (no markdown code blocks around it)
+
+  placeholders:
+    - token: "<<NUM_TIMELINES>>"
+      description: "Number of timeline samples provided"
+    - token: "<<TIMELINES_YAML>>"
+      description: "YAML format of timeline samples with indices and events"
+    - token: "<<PATIENT_INFO>>"
+      description: "Patient's determined demographics and comorbidities"
+    - token: "<<CDC_DATA>>"
+      description: "Cleaned CDC health data from previous step"
+

@@ -1,0 +1,157 @@
+prompt_package:
+  name: "PatientAugmenter"
+  version: "1.0.0"
+  description: "Prompt for augmenting patient profiles with evidence-based information from PubMed abstracts"
+  
+  system: |
+    You are a comprehensive patient profiling expert with expertise in symptomatology, clinical psychology, and behavioral health. Your task is to augment and improve a patient's complete profile based on extracted information from PubMed case study abstracts.
+
+    Key objectives:
+    1. Enhance symptoms with more clinical detail, realism, and evidence-based progression
+    2. Refine psychological scales to reflect the documented impacts of chronic conditions
+    3. Improve role-play profile to capture authentic patient communication and behavioral patterns
+    4. Ensure consistency across all sections of the patient profile
+    5. Base all augmentations on evidence from the provided new information found in the abstracts
+
+    Guidelines:
+    - Maintain the exact YAML structure for all sections
+    - Enhance existing information using the new information found in the abstracts
+    - Add new symptoms that are evidence-based and realistic (only if supported by the research)
+    - Adjust psychological scales based on documented personality impacts
+    - Improve role-play elements to reflect authentic patient experiences
+    - Ensure all augmentations are consistent with patient demographics and diseases
+    - Use clinical terminology appropriately while keeping descriptions patient-friendly
+
+  user_template: |
+    Please augment the following patient profile based on extracted information from PubMed abstracts.
+
+    PATIENT DEMOGRAPHICS:
+    {demographics}
+
+    EXTRACTED INFORMATION FROM PUBMED ABSTRACTS:
+    {abstracts_summary}
+
+    CURRENT PATIENT PROFILE
+
+    CURRENT SYMPTOMS:
+    {current_symptoms}
+
+    CURRENT PSYCHOLOGICAL SCALES:
+    {current_scales}
+
+    CURRENT ROLE-PLAY PROFILE:
+    {current_profile}
+
+    AUGMENTATION TASK:
+
+    Please return a complete augmented profile with ALL THREE sections improved:
+
+    1. **SYMPTOMS**: Enhance existing symptoms and add new evidence-based symptoms, if applicable
+    2. **PSYCHOLOGICAL_SCALES**: Adjust scores and narratives based on research evidence
+    3. **ROLE_PLAY_PROFILE**: Improve communication patterns, motivations, barriers, and coping strategies based on research evidence
+
+    REQUIRED OUTPUT STRUCTURE (you MUST follow this exactly):
+    ```yaml
+    symptoms:
+      list:
+        - symptom: <symptom name>
+          severity: <mild|moderate|severe>
+          frequency: <daily|weekly|occasionally|etc>
+          duration: <offset like "-6mo", "-2y", etc>
+          aggravating_factors:
+            - <factor 1>
+            - <factor 2>
+          relieving_factors:
+            - <factor 1>
+            - <factor 2>
+          description: <detailed description>
+        - symptom: <another symptom>
+          severity: <mild|moderate|severe>
+          frequency: <daily|weekly|occasionally|etc>
+          duration: <offset like "-6mo", "-2y", etc>
+          aggravating_factors:
+            - <factor 1>
+          relieving_factors:
+            - <factor 1>
+          description: <detailed description>
+
+    psychological_scales:
+      hexaco:
+        honesty_humility: <0-100>
+        emotionality: <0-100>
+        extraversion: <0-100>
+        agreeableness: <0-100>
+        conscientiousness: <0-100>
+        openness: <0-100>
+        narrative: <3-4 sentence narrative>
+      rst:
+        bis: <0-100>
+        bas: <0-100>
+        fight: <0-100>
+        flight: <0-100>
+        freeze: <0-100>
+        narrative: <3-4 sentence narrative>
+      tci:
+        novelty_seeking: <0-100>
+        harm_avoidance: <0-100>
+        reward_dependence: <0-100>
+        persistence: <0-100>
+        self_directedness: <0-100>
+        cooperativeness: <0-100>
+        self_transcendence: <0-100>
+        narrative: <3-4 sentence narrative>
+
+    role_play_profile:
+      voice:
+        tone: <description>
+        pace: <description>
+        vocabulary: <description>
+      conversational_style: <description>
+      goals_values:
+        - <goal/value 1>
+        - <goal/value 2>
+      ambivalence:
+        <key>: <description>
+      triggers:
+        - <trigger 1>
+        - <trigger 2>
+      readiness_to_change:
+        stage: <precontemplation|contemplation|preparation|action|maintenance>
+        reasoning: <explanation>
+      coping_strategies:
+        - <strategy 1>
+        - <strategy 2>
+      support_system:
+        - <support 1>
+        - <support 2>
+      example_utterances:
+        - <utterance 1>
+        - <utterance 2>
+        - <utterance 3>
+        - <utterance 4>
+        - <utterance 5>
+    ```
+
+    CRITICAL REQUIREMENTS: 
+    - All field values must have a colon (:) after the field name
+    - Use proper YAML syntax with correct indentation (2 spaces)
+    - Lists must use the dash (-) format
+    - Each symptom MUST have ALL fields: symptom, severity, frequency, duration, aggravating_factors, relieving_factors, description
+    - Psychological scale scores must be integers between 0-100
+    - Duration must be a string like "-6mo", "-2y", "-3d"
+    - Include at least 5 example_utterances in role_play_profile
+    
+    Return ONLY valid YAML with the three main sections (symptoms, psychological_scales, role_play_profile) - no explanations or markdown code blocks.
+
+  placeholders:
+    - token: "{demographics}"
+      description: "Patient demographics information"
+    - token: "{abstracts_summary}"
+      description: "Summarized information extracted from PubMed abstracts (from abstracts_information_extraction prompt)"
+    - token: "{current_symptoms}"
+      description: "Current symptoms section from the base patient profile"
+    - token: "{current_scales}"
+      description: "Current psychological scales section from the base patient profile"
+    - token: "{current_profile}"
+      description: "Current role-play profile section from the base patient profile"
+

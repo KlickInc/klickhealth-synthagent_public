@@ -1,0 +1,95 @@
+prompt_package:
+  name: "SummarizerAgent_QueryBuilder"
+  version: "1.0.0"
+  description: "Prompt for Gemini to find the most demographically similar CDC sample and clean it"
+  
+  system: |
+    You are analyzing CDC patient data samples to find the BEST MATCH for creating a synthetic patient.
+
+  user_template: |
+    You are analyzing CDC patient data samples to find the BEST MATCH for creating a synthetic patient.
+
+    TARGET PATIENT DEMOGRAPHICS (that we want to match):
+    <<DEMOGRAPHIC_CONSTRAINTS>>
+
+    You have <<NUM_SAMPLES>> CDC patient samples below.
+
+    YOUR TASK:
+    1. Find the ONE sample that is MOST SIMILAR to the target demographics above (matching age range, sex, ethnicity, language, education level, income bracket, etc.)
+
+    2. From that selected sample, CREATE A CLEANED AND SUMMARIZED VERSION by:
+       
+       A. COMPLETELY REMOVE these fields (not useful for synthetic patient generation):
+          - acculturation (empty or not clinically relevant)
+          - body_measures (redundant - BMI range already specified in target)
+          - weight_history (redundant - BMI range already specified)
+          - All demographic fields already determined in target (age, sex, ethnicity, marital status, education, employment, occupation, income bracket, insurance type, first language, household size, state, urbanicity)
+          - Interview weights, examination weights, questionnaire-specific codes, proxy indicators
+          - Language of interview fields
+       
+       B. For REMAINING fields, CREATE CONCISE SUMMARIES instead of keeping detailed questionnaire Q&A:
+          
+          Transform detailed questionnaire responses into brief clinical summaries:
+          
+          Example transformation:
+          BEFORE (detailed Q&A):
+          "alcohol_use":
+            "Ever had a drink of any kind of alcohol.": "Yes"
+            "Past 12 mos how often drink alcoholic beverages.": "7 to 11 times in the last year"
+            "Avg number of alcoholic drinks/day (on drinking days) in past 12 mos.": "1.0"
+            "number of days had 4/5+ drinks in a day (past 12 mos).": "Never in the last year"
+          
+          AFTER (clinical summary):
+          "alcohol_use": "Occasional drinker (7-11 times/year), typically 1 drink per occasion, no binge drinking"
+          
+          Apply this to ALL remaining fields:
+          - diabetes → summary of diabetes status and testing
+          - smoking_cigarette_use → summary of smoking history
+          - mental_health_depression_screener → summary of depression screening results with severity
+          - physical_activity → summary of activity levels (moderate/vigorous exercise frequency)
+          - sleep_disorders → summary of sleep patterns and quality
+          - diet_behavior_nutrition → summary of dietary habits
+          - kidney_conditions_urology → summary of kidney/urinary issues if any
+          - medical_conditions → summary of diagnosed conditions
+          - reproductive_health → summary of relevant reproductive history (if applicable)
+          - preventive_aspirin_use → summary of aspirin use
+          - prescription_medications → summary of medication count and types
+          - physical_functioning → summary of functional limitations if any
+          
+          Each summary should be:
+          - 1-2 sentences maximum
+          - Clinically relevant information only
+          - Easy to understand for synthetic patient generation
+          - Remove question text, keep only meaningful clinical information
+
+    3. Provide a brief 2-3 sentence explanation of why this sample matches best and what makes it useful.
+
+    Here are the CDC samples:
+
+    <<CDC_SAMPLES_YAML>>
+
+    Respond in YAML format:
+    ```yaml
+    summary: "Brief 2-3 sentence explanation of the match and usefulness"
+    best_sample_index: 0-9
+    reasoning: "Why this sample matches the target demographics best"
+    best_sample_cleaned:
+      field_name: "1-2 sentence clinical summary of the information"
+      # ... (for each remaining useful field) ...
+    ```
+
+    CRITICAL REQUIREMENTS:
+    1. REMOVE: acculturation, body_measures, weight_history, and all already-determined demographics
+    2. SUMMARIZE: Transform all remaining questionnaire Q&A into brief clinical summaries (1-2 sentences each)
+    3. Return in "best_sample_cleaned" field, not "best_sample"
+    4. Keep ONLY clinically relevant information useful for synthetic patient generation
+    5. Respond ONLY with valid YAML (no markdown code blocks around it)
+
+  placeholders:
+    - token: "<<NUM_SAMPLES>>"
+      description: "Number of CDC samples provided (now 10)"
+    - token: "<<CDC_SAMPLES_YAML>>"
+      description: "YAML format of CDC patient samples"
+    - token: "<<DEMOGRAPHIC_CONSTRAINTS>>"
+      description: "Target patient's demographic constraints for matching"
+

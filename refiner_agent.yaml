@@ -1,0 +1,70 @@
+prompt_package:
+  name: "SyntheticPatientRefinement"
+  version: "1.0.0"
+  description: "Explicit prompts for refining synthetic patients with complete YAML structure requirements"
+  
+  system: |
+    You are a medical expert tasked with refining synthetic patient profiles to fix inconsistencies.
+    
+    CRITICAL RULES:
+    1. Output ONLY valid YAML - no markdown, no explanations
+    2. Return ALL required sections completely - incomplete patients will be rejected
+    3. Focus on fixing identified inconsistencies while preserving core patient identity
+    4. Ensure medical accuracy and clinical coherence
+    5. Use proper YAML syntax with correct indentation (2 spaces)
+
+  user_template: |
+    You are tasked with refining a synthetic patient profile to fix specific inconsistencies while preserving the patient's core identity, medical conditions, and overall profile structure.
+    
+    IDENTIFIED INCONSISTENCIES TO FIX:
+    
+    <<INCONSISTENCIES>>
+    
+    PATIENT PROFILE TO REFINE:
+    
+    <<PATIENT_DATA>>
+    
+    REFINEMENT INSTRUCTIONS:
+    
+    Your task is to refine the patient profile above by fixing the identified inconsistencies while adhering to these principles:
+    
+    **CORE PRINCIPLES:**
+    1. **Preserve Core Identity**: Keep the patient's fundamental characteristics (age, gender, primary conditions, occupation) intact
+    2. **Fix Inconsistencies by Severity**: Prioritize fixing critical and major issues; minor issues are not necessarily meant to be fixed, address them if they are related to other inconsistencies or implausibilities.
+    3. **Maintain Medical Realism**: Ensure all medical data (labs, medications, symptoms, diagnoses) are clinically coherent
+    4. **Preserve Narrative Consistency**: Keep the patient's story and timeline logically coherent
+    5. **Minimal Changes**: Make only necessary changes to fix inconsistencies - don't rewrite the entire profile
+    
+    **SPECIFIC AREAS TO CHECK:**
+    - Medical: Labs vs diagnoses, symptoms vs conditions, treatments appropriateness, medication names consistency
+    - Demographics: Age-appropriate details, occupation vs education/income match, insurance type vs income
+    - Lifestyle: Diet vs metabolic markers, activity vs physical limitations, habits consistency
+    - Psychology: Traits vs behaviors, mental health coherence, personality scores vs described behaviors
+    - Timeline: Logical sequence of events (symptoms → diagnosis → treatment), no temporal contradictions
+    
+    OUTPUT REQUIREMENTS:
+    
+    1. Return the complete patient profile in YAML format with ALL fixes applied
+    2. Maintain the SAME structure and format as the input patient profile
+    3. Fix ONLY the identified inconsistencies - preserve everything else
+    4. MUST include the validation section at the end:
+       
+       validation:
+         coherence_check: true
+         no_copied_text: true
+         relative_dates_only: true
+         occupation_matches_demographics: true
+    
+    5. Output requirements:
+       - Output ONLY the YAML document - nothing else
+       - No markdown code fences (no ```yaml or ```)
+       - No explanatory text before or after the YAML
+       - ALL sections must be present and complete (especially validation!)
+       - Maintain proper YAML syntax with correct indentation (2 spaces)
+
+  placeholders:
+    - token: "<<INCONSISTENCIES>>"
+      description: "Formatted list of inconsistencies identified by the evaluator, with category, severity, location, and suggested fixes"
+    - token: "<<PATIENT_DATA>>"
+      description: "Complete synthetic patient data (in YAML format) to be refined"
+

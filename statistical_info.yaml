@@ -1,0 +1,183 @@
+# Standard demographic options and probabilities for obesity patient simulation
+
+# Patient Generation Probabilities
+probabilities:  
+  # Individual comorbidity probabilities (out of 100) when patient has comorbidities
+  individual_comorbidity_probabilities:
+    "Generalized Anxiety Disorder": 12
+    "Depression": 27
+    "Binge Eating Disorder": 8
+    "Social Phobia (Social Anxiety Disorder)": 8
+    "Body Dysmorphic Disorder": 3
+    "Anorexia Nervosa": 0.05
+    "Bulimia Nervosa": 0.05
+
+demographics:
+  sex_at_birth:
+    options:
+      "Male": 48.2
+      "Female": 51.8
+
+  # Gender identity conditional on sex at birth (realistic transgender rates)
+  gender_identity_conditional:
+    "Male":  # For those assigned male at birth
+      "Male": 99.3      # Cisgender male
+      "Female": 0.5     # Transgender woman (male-to-female)
+      "Non-binary": 0.2 # Non-binary assigned male at birth
+    "Female":  # For those assigned female at birth  
+      "Female": 99.5    # Cisgender female
+      "Male": 0.3       # Transgender man (female-to-male)
+      "Non-binary": 0.2 # Non-binary assigned female at birth
+
+  # Pronouns based on gender identity
+  pronouns_by_gender:
+    "Male": "he/him"
+    "Female": "she/her"
+    "Non-binary": "they/them"
+      
+  age:
+    # Age distribution probabilities (weights for sampling)
+    ranges:
+      "19-25": 7.4  # 7.4% young adults
+      "26-35": 16.1   # 16.1% early career
+      "36-45": 18.5   # 18.5% middle age
+      "46-55": 19.4   # 19.4% pre-retirement
+      "56-65": 17.9   # 17.9% late career
+      "66-75": 15.3    # 15.3% early retirement
+      "76-80": 5.4    # 5.4% elderly
+    
+  ethnicity_race:
+    # Standardized race/ethnicity options with US population-based probabilities
+    options:
+      "White": 61.5
+      "Hispanic or Latino": 18
+      "Black or African American": 13.8
+      "Asian": 2.4
+      "Native American": 0.8
+      "Pacific Islander": 0.3
+      "Multiracial": 3.2
+      
+  marital_status:
+    options:
+      "Single": 28
+      "Married": 56
+      "Separated": 12.2
+      "Widowed": 3.8
+      
+  education:
+    options:
+      "Less than High School": 10.2
+      "High School Graduate": 30.6
+      "Some College": 27.7
+      "Bachelor's Degree": 19.4
+      "Graduate Degree": 12.1
+      
+  employment_status:
+    options:
+      "Employed Full-Time": 50.8
+      "Employed Part-Time": 10
+      "Unemployed": 2.8
+      "Student": 3
+      "Retired": 19.2
+      "Disabled": 9.2
+      "Homemaker": 5
+      
+  income_bracket:
+    options:
+      "Under $25,000": 18.9
+      "$25,000 - $34,999": 8.7
+      "$35,000 - $49,999": 11.9
+      "$50,000 - $74,999": 17.8
+      "$75,000 - $99,999": 12
+      "$100,000 - $149,999": 14.5
+      "$150,000 - $199,999": 7.8
+      "$200,000+": 8.4
+      
+  insurance_type:
+    options:
+      "Commercial": 55
+      "Medicare": 18
+      "Medicaid": 15
+      "Uninsured": 8
+      "Military/VA": 3
+      "Other": 1
+      
+  first_language:
+    options:
+      "English": 78
+      "Spanish": 13
+      "Chinese": 2
+      "Vietnamese": 1
+      "Korean": 1
+      "Arabic": 1
+      "French": 1
+      "German": 1
+      "Other": 2
+      
+  household_size:
+    options:
+      "1": 28    # Single person
+      "2": 35    # Couple
+      "3": 15    # Small family
+      "4": 13    # Medium family
+      "5": 6     # Large family
+      "6": 2     # Very large family
+      "7+": 1    # Extra large family
+      
+  urbanicity:
+    options:
+      "urban": 60
+      "suburban": 30
+      "rural": 10
+      
+  us_states:
+    # Top 15 most populous states with realistic distribution
+    options:
+      "California": 12
+      "Texas": 9
+      "Florida": 6.5
+      "New York": 6
+      "Pennsylvania": 4
+      "Illinois": 4
+      "Ohio": 3.5
+      "Georgia": 3
+      "North Carolina": 3
+      "Michigan": 3
+      "New Jersey": 2.5
+      "Virginia": 2.5
+      "Washington": 2.5
+      "Arizona": 2
+      "Tennessee": 2
+      "Other": 38    # Remaining states combined
+
+lifestyle:
+  alcohol_frequency:
+    options:
+      "Never": 25
+      "Rarely": 20
+      "Monthly": 15
+      "Weekly": 25
+      "Daily": 10
+      "Heavy": 5
+      
+  tobacco_status:
+    options:
+      "Never": 60
+      "Former": 25
+      "Current": 15
+      
+  physical_activity_level:
+    options:
+      "Sedentary": 25
+      "Light": 30
+      "Moderate": 30
+      "Active": 12
+      "Very Active": 3
+
+medical:
+  bmi_class_distribution:
+    # Among obese patients (BMI >= 30)
+    options:
+      "Class I": 60    # BMI 30-34.9
+      "Class II": 25   # BMI 35-39.9
+      "Class III": 15  # BMI 40+

@@ -1,0 +1,739 @@
+prompt_package:
+  name: "SyntheticPatientJudge_v1_MultiStep"
+  version: "1.0.0"
+  description: "Multi-step LLM evaluation system that assesses each dimension separately with focused context"
+  
+  system_base: |
+    You are a Senior Clinical Data Quality Reviewer and Medical Informaticist, expert in evaluating synthetic patient profiles for clinical authenticity, internal coherence, and appropriate level of detail.
+    
+    You must be rigorous, evidence-based, and clinically grounded. Pay special attention to the completeness and proportionality of detail.
+  
+  # ==================================================================================
+  # DIMENSION 1: DEMOGRAPHICS (4 points)
+  # ==================================================================================
+  demographics:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating the DEMOGRAPHICS section of a synthetic patient profile.
+      
+      Focus on internal consistency within demographics: insurance matching age/employment, income matching occupation, education matching occupation, household size matching marital status.
+    
+    user_template: |
+      # TASK: Evaluate DEMOGRAPHICS Section
+      
+      ## PATIENT DEMOGRAPHICS:
+      <<DEMOGRAPHICS_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (4 points total):
+      
+      **Assess (deduct points for each issue found):**
+      - **Insurance type** wrong for age/employment status:
+        * Age 65+ should have Medicare: -1 point
+        * Disabled/low-income should have Medicaid: -1 point
+        * Retired under 65 with commercial instead of disability: -1 point
+        * Full-time employed under 65 with commercial: no deduction
+      - **Income-occupation mismatch**:
+        * Completely incompatible (e.g., janitor with $200K+): -1 point
+        * Moderately misaligned: -1 point
+      - **Education significantly mismatched with occupation**: -1 point
+      - **Household size contradicts marital status**:
+        * Married with household size 1: -1 point
+        * Single with household size >1 unexplained: -1 point
+      - **Employment status contradicts stated occupation**: -1 point
+      - **Location/urbanicity** doesn't match lifestyle: -1 point
+      
+      **Red flag examples:**
+      - 46-year-old retired with commercial insurance (should be disability): -1 point
+      - Income under $25,000 for full-time Financial Analyst: -1 point
+      - Age 69, married, household size 1 (should be 2+): -1 point
+      - Occupation "medical doctor" with education "High School Diploma": -1 point
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object with this structure:
+      ```json
+      {
+        "dimension": "demographics",
+        "max_points": 4,
+        "score": <NUMBER_0_TO_4>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation of what was checked and why points were deducted (or why full points were awarded). Include specific examples from patient data.",
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description with examples",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+      
+      Start with max_points (4) and deduct for each issue. Be thorough and specific.
+    
+    placeholders:
+      - "<<DEMOGRAPHICS_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 2: MEDICAL_HISTORY (8 points)
+  # ==================================================================================
+  medical_history:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating the MEDICAL_HISTORY section of a synthetic patient profile.
+      
+      Focus on completeness of fields (past_conditions, surgeries, allergies, family_history) and appropriateness for patient's age.
+    
+    user_template: |
+      # TASK: Evaluate MEDICAL_HISTORY Section
+      
+      ## PATIENT AGE:
+      <<PATIENT_AGE>>
+      
+      ## MEDICAL_HISTORY DATA:
+      <<MEDICAL_HISTORY_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (8 points total):
+      
+      **Completeness (4 points, 1 point each field):**
+      - **past_conditions**: Present and appropriately detailed? (1 point)
+      - **surgeries**: Present and appropriately detailed? (1 point)
+      - **allergies**: Present or explicitly noted as none? (1 point)
+      - **family_history**: Present and appropriately detailed? (1 point)
+      
+      **Appropriateness for Age (4 points):**
+      - **Young patient (<35 years)**:
+        * Long list of past_conditions with minimal family_history: -1 to -2 points
+        * Missing family_history when many past_conditions present: -1 point
+      - **Mid-age patient (35-55 years)**:
+        * Long family_history but very short past_conditions (expect some progression): -1 to -2 points
+        * Disproportionate relationship between family risk and personal history: -1 point
+      - **Older patient (55+ years)**:
+        * Very short past_conditions with extensive family_history: -1 to-2 points
+        * Long family_history should typically yield more complete medical_history: -1 to -2 points
+      - **General principle**: Someone with long family_history and mid-age or older should have relatively more complete medical_history
+      
+      **Red flag examples:**
+      - 21-year-old with 8 past conditions but no family history: -2 points
+      - 62-year-old with extensive family history of diabetes, heart disease but only 1 past condition: -2 points
+      - Missing all family_history information: -2 points
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "medical_history",
+        "max_points": 8,
+        "score": <NUMBER_0_TO_8>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering completeness (4 points) and age-appropriateness (4 points). Include specific examples.",
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<PATIENT_AGE>>"
+      - "<<MEDICAL_HISTORY_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 3: CURRENT_CONDITIONS (15 points)
+  # ==================================================================================
+  current_conditions:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating CURRENT_CONDITIONS consistency with medical history and family history.
+      
+      Focus on list completeness relative to medical/family history and consistency between past conditions, family history, and current conditions.
+    
+    user_template: |
+      # TASK: Evaluate CURRENT_CONDITIONS Section
+      
+      ## PATIENT AGE AND GENDER:
+      <<PATIENT_AGE_GENDER>>
+      
+      ## MEDICAL_HISTORY (for context):
+      <<MEDICAL_HISTORY_DATA>>
+      
+      ## CURRENT_CONDITIONS:
+      <<CURRENT_CONDITIONS_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (15 points total):
+      
+      **Completeness (5 points):**
+      - **Length consistency with medical_history and family_history**:
+        * Long medical_history + long family_history but very short current_conditions (≤2): -2 to -5 points
+        * Short medical_history + short family_history but very long current_conditions (≥8): -1 to -3 points
+        * Moderate mismatch in proportionality: -1 to -2 points
+        * Well-balanced and proportionate lists: 0 deductions
+      
+      **Consistency with family_history and medical_history (10 points, -2 per inconsistency):**
+      - **Family history not reflected**: Strong family history of condition but no current or past mention: -2 points
+      - **Past condition recurrence**: Past condition marked "resolved" appears in current without explanation: -2 points
+      - **Age-condition mismatch**: Current conditions implausible for patient age: -2 points per condition
+      - **Missing expected progressions**: Past prediabetes but no diabetes despite 10 years passing: -2 points
+      - **Contradictory diagnoses**: Mutually exclusive conditions present: -2 points per pair
+      - **Gender-inappropriate conditions**: Conditions not possible for patient's gender: -2 points
+      
+      **Red flag examples:**
+      - Extensive family history of diabetes and heart disease, patient age 58, but current_conditions only lists "seasonal allergies": -5 points
+      - 8 current conditions but minimal medical_history and no family_history: -3 points
+      - Family history shows breast cancer, patient is 55-year-old female, but no mention in current or past: -2 points
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "current_conditions",
+        "max_points": 15,
+        "score": <NUMBER_0_TO_15>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering completeness (5 points) and consistency with family/medical history (10 points). Include specific examples.",
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<PATIENT_AGE_GENDER>>"
+      - "<<MEDICAL_HISTORY_DATA>>"
+      - "<<CURRENT_CONDITIONS_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 4: SYMPTOMS (15 points)
+  # ==================================================================================
+  symptoms:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating SYMPTOMS section for word count completeness, list length consistency with current conditions, and symptom-condition alignment.
+      
+      You must count words accurately and check alignment between symptoms and diagnoses.
+    
+    user_template: |
+      # TASK: Evaluate SYMPTOMS Section
+      
+      ## CURRENT_CONDITIONS (for reference):
+      <<CURRENT_CONDITIONS_DATA>>
+      
+      ## SYMPTOMS:
+      <<SYMPTOMS_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (15 points total):
+      
+      **Description Completeness (5 points):**
+      - Count the average word count across all symptom descriptions
+      - **Scoring**:
+        * 160+ words per symptom on average: no deduction (excellent detail)
+        * 130-160 words per symptom on average: -1 point (very good detail)
+        * 110-130 words per symptom on average: -2 points (good detail)
+        * 90-110 words per symptom on average: -3 points (adequate detail)
+        * 70-90 words per symptom on average: -4 points (minimal detail)
+        * below 70 words per symptom on average: -5 points (insufficient detail)
+        * Only symptom names with no descriptions: -5 points
+      
+      **List Length Consistency (4 points):**
+      - **Long current_conditions (6+) with short symptom list (≤3)**: -3 to -4 points
+      - **Short current_conditions (≤2) with long symptom list (6+)**: -2 to -3 points
+      - **Moderate mismatch**: -1 to -2 points
+      - **Well-balanced**: 0 deductions
+      
+      **Symptom-Condition Alignment (6 points, -2 per inconsistency):**
+      - **Symptom without corresponding condition**: Symptom present but no related diagnosis: -2 points
+      - **Condition without corresponding symptoms**: Major current condition with NO related symptoms: -2 points
+      - **Symptom severity mismatch**: Severe condition with only mild symptoms or vice versa: -2 points
+      - **Duration inconsistency**: Symptom duration doesn't match condition timeline: -2 points
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "symptoms",
+        "max_points": 15,
+        "score": <NUMBER_0_TO_15>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering description word count (5 points), list length consistency (4 points), and symptom-condition alignment (6 points). Include word count calculations and specific examples.",
+        "word_count_metrics": {
+          "average_words_per_symptom": <NUMBER>,
+          "total_symptoms": <NUMBER>
+        },
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<CURRENT_CONDITIONS_DATA>>"
+      - "<<SYMPTOMS_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 5: HABITS (8 points)
+  # ==================================================================================
+  habits:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating HABITS section for word count completeness and consistency with current conditions.
+      
+      You must count words accurately across all habit categories and check for lifestyle-condition contradictions.
+    
+    user_template: |
+      # TASK: Evaluate HABITS Section
+      
+      ## CURRENT_CONDITIONS (for reference):
+      <<CURRENT_CONDITIONS_DATA>>
+      
+      ## HABITS:
+      <<HABITS_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (8 points total):
+      
+      **Completeness by Word Count (5 points):**
+      - Assess each of the 5 habit categories (alcohol, tobacco, sleep, physical_activity, diet)
+      - Calculate average word count across all habit descriptions
+      - **Scoring**:
+        * 100+ words per habit on average: no deduction (excellent detail)
+        * 80-100 words per habit on average: -1 point (very good detail)
+        * 60-80 words per habit on average: -2 points (good detail)
+        * 40-60 words per habit on average: -3 points (adequate detail)
+        * 20-40 words per habit on average: -4 points (minimal detail)
+        * 0-20 words per habit on average: -5 points (insufficient detail)
+      
+      **Consistency with Current Conditions (3 points):**
+      - **Sleep habits inconsistent with sleep disorders**: Good sleep described with OSA/insomnia: -1 to -2 points
+      - **Physical activity contradicts limitations**: High activity with severe arthritis/heart failure: -1 to -2 points
+      - **Diet contradicts metabolic conditions**: "Excellent balanced diet" with worsening diabetes/obesity: -1 to -2 points
+      - **Alcohol/tobacco use inconsistent**: Heavy use with no related conditions or vice versa: -1 point
+      - **Habits don't reflect psychological state**: Elaborate self-care with severe depression: -1 point
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "habits",
+        "max_points": 8,
+        "score": <NUMBER_0_TO_8>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering word count completeness (5 points) and consistency with conditions (3 points). Include word count calculations and specific examples.",
+        "word_count_metrics": {
+          "average_words_per_habit": <NUMBER>,
+          "total_habits": <NUMBER>
+        },
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<CURRENT_CONDITIONS_DATA>>"
+      - "<<HABITS_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 6: LABS (3 points)
+  # ==================================================================================
+  labs:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating LAB VALUES for consistency with current conditions and diagnoses.
+      
+      Focus on checking if lab values match the stated diagnoses (HbA1c with diabetes, BP with hypertension, BMI classification, etc.).
+    
+    user_template: |
+      # TASK: Evaluate LABS Section
+      
+      ## CURRENT_CONDITIONS (for reference):
+      <<CURRENT_CONDITIONS_DATA>>
+      
+      ## LABS:
+      <<LABS_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (3 points total):
+      
+      **Lab Value Consistency (3 points, -1 per inconsistency):**
+      - **HbA1c mismatch**: HbA1c value doesn't support diabetes diagnosis (e.g., 7.5% called prediabetes): -1 point
+      - **Blood pressure mismatch**: BP readings don't match hypertension diagnosis or severity: -1 point
+      - **Lipid panel mismatch**: Lipid values don't support hyperlipidemia diagnosis: -1 point
+      - **BMI miscalculation or misclassification**: BMI class incorrect (Class I: 30-34.9, II: 35-39.9, III: ≥40): -1 point
+      - **Other lab inconsistencies**: Each additional lab-diagnosis mismatch: -1 point
+      
+      **Red flag examples:**
+      - HbA1c 7.8% labeled as prediabetes (should be diabetes): -1 point
+      - BMI 45.8 labeled as Class II (should be Class III): -1 point
+      - Blood pressure 165/98 but no hypertension diagnosis: -1 point
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "labs",
+        "max_points": 3,
+        "score": <NUMBER_0_TO_3>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation of lab value consistency. Include specific lab values and diagnoses checked.",
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<CURRENT_CONDITIONS_DATA>>"
+      - "<<LABS_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 7: TREATMENTS (15 points)
+  # ==================================================================================
+  treatments:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating TREATMENTS for appropriateness, completeness, and consistency with current conditions.
+      
+      Focus on list length vs conditions, treatment-condition matching, psychotherapy for psychological conditions, and device appropriateness.
+    
+    user_template: |
+      # TASK: Evaluate TREATMENTS Section
+      
+      ## CURRENT_CONDITIONS (for reference):
+      <<CURRENT_CONDITIONS_DATA>>
+      
+      ## ALLERGIES (for contraindication checking):
+      <<ALLERGIES_DATA>>
+      
+      ## TREATMENTS:
+      <<TREATMENTS_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (15 points total):
+      
+      **List Length Appropriateness (4 points):**
+      - **Short treatment list (≤3) with long current_conditions (6+)**: -3 to -4 points
+      - **Long treatment list (8+) with short current_conditions (≤3)**: -2 to -3 points
+      - **Moderate mismatch**: -1 to -2 points
+      - **Well-balanced**: 0 deductions
+      
+      **Treatment-Condition Consistency (6 points, -2 per inconsistency):**
+      - **Missing expected first-line treatment**: Major condition with no standard medication: -2 points
+      - **Treatment without diagnosis**: Medication prescribed for condition not diagnosed: -2 points
+      - **Contraindicated treatment**: Taking medication that conflicts with allergy: -2 points
+      - **Inappropriate dosing**: Medication dose unrealistic or dangerous: -2 points
+      
+      **Psychotherapy Assessment (5 points):**
+      - **Severe psychological condition (e.g., severe depression, PTSD, severe anxiety) with NO psychotherapy**: -5 points
+      - **Moderate psychological condition with no psychotherapy and no medication**: -3 points
+      
+      **Device Appropriateness:**
+      - **Device doesn't match conditions**: Device listed that makes no sense for patient: -1 point per device
+      - **Missing expected device**: OSA with no CPAP mentioned, diabetes with no glucose monitor: -1 point
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "treatments",
+        "max_points": 15,
+        "score": <NUMBER_0_TO_15>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering list length (4 points), treatment-condition consistency (6 points), psychotherapy (5 points), and device appropriateness. Include specific examples.",
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major|critical",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<CURRENT_CONDITIONS_DATA>>"
+      - "<<ALLERGIES_DATA>>"
+      - "<<TREATMENTS_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 8: PSYCHOLOGICAL_SCALES (10 points)
+  # ==================================================================================
+  psychological_scales:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating PSYCHOLOGICAL_SCALES for consistency with psychological conditions and narrative word count.
+      
+      Focus on scale-diagnosis alignment and narrative depth (word count).
+    
+    user_template: |
+      # TASK: Evaluate PSYCHOLOGICAL_SCALES Section
+      
+      ## CURRENT_CONDITIONS (psychological conditions):
+      <<CURRENT_CONDITIONS_PSYCH>>
+      
+      ## FAMILY_HISTORY (mental health):
+      <<FAMILY_HISTORY_MENTAL>>
+      
+      ## PSYCHOLOGICAL_SCALES:
+      <<PSYCHOLOGICAL_SCALES_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (10 points total):
+      
+      **Consistency Assessment (5 points, -2 to -3 per inconsistency):**
+      - **With psychological conditions**: If psychological conditions present (depression, anxiety, PTSD), do scales reflect these?
+        * Depression present but no low mood indicators in scales: -2 to -3 points
+        * Anxiety present but scales show low emotionality/neuroticism: -2 to -3 points
+        * Each additional scale-diagnosis mismatch: -2 points
+      - **Without psychological conditions**: If no psychological diagnoses, do scales make sense with general conditions and family history?
+        * Major contradictions in scale patterns: -2 to -3 points
+        * Scales contradict lifestyle/habits described: -2 points
+      - **Scale-to-scale contradictions**: High Extraversion but very low BAS (Behavioral Approach System): -2 points
+      
+      **Narrative Word Count (5 points):**
+      - Calculate average word count across all psychological scale narratives
+      - **Scoring**:
+        * 100+ words per scale narrative on average: no deduction (excellent depth)
+        * 80-100 words per scale narrative on average: -1 point (good depth)
+        * 60-80 words per scale narrative on average: -2 points (adequate depth)
+        * 40-60 words per scale narrative on average: -3 points (minimal depth)
+        * 20-40 words per scale narrative on average: -4 points (insufficient depth)
+        * <20 words per scale narrative on average: -5 points (too shallow)
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "psychological_scales",
+        "max_points": 10,
+        "score": <NUMBER_0_TO_10>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering consistency with conditions (5 points) and narrative word count (5 points). Include word count calculations and specific examples.",
+        "word_count_metrics": {
+          "average_words_per_narrative": <NUMBER>,
+          "total_narratives": <NUMBER>
+        },
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<CURRENT_CONDITIONS_PSYCH>>"
+      - "<<FAMILY_HISTORY_MENTAL>>"
+      - "<<PSYCHOLOGICAL_SCALES_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 9: ROLE_PLAY_PROFILE (10 points)
+  # ==================================================================================
+  role_play_profile:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating ROLE_PLAY_PROFILE for consistency with psychological scales and content word count.
+      
+      Focus on alignment between role-play elements and psychological scales, and assess richness of content by word count.
+    
+    user_template: |
+      # TASK: Evaluate ROLE_PLAY_PROFILE Section
+      
+      ## PSYCHOLOGICAL_SCALES (for reference):
+      <<PSYCHOLOGICAL_SCALES_DATA>>
+      
+      ## ROLE_PLAY_PROFILE:
+      <<ROLE_PLAY_PROFILE_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (10 points total):
+      
+      **Consistency with Psychological Scales (5 points, -2 to -3 per inconsistency):**
+      - **Communication style contradicts scales**: Verbose communication but low Extraversion: -2 to -3 points
+      - **Goals/motivations contradict scales**: High achievement goals but low Conscientiousness/Self-Directedness: -2 to -3 points
+      - **Coping strategies contradict scales**: "Seeks social support" but low Extraversion and no support system: -2 to -3 points
+      - **Emotional triggers don't align**: Triggers don't match Emotionality/Harm Avoidance scores: -2 points
+      - **Example utterances don't match voice**: Utterances contradict stated communication style: -2 points
+      
+      **Content Word Count (4 points):**
+      - Calculate average word count across all role_play_profile subsections (communication_style, motivations, goals, coping_strategies, triggers, etc.)
+      - **Scoring**:
+        * 250+ words per subsection on average: no deduction (excellent richness)
+        * 200-250 words per subsection on average: -1 point (good richness)
+        * 150-200 words per subsection on average: -2 points (adequate richness)
+        * 100-150 words per subsection on average: -3 points (minimal richness)
+        * <100 words per subsection on average: -4 points (too sparse)
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "role_play_profile",
+        "max_points": 10,
+        "score": <NUMBER_0_TO_10>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering consistency with psychological scales (5 points) and content word count (4 points). Include word count calculations and specific examples.",
+        "word_count_metrics": {
+          "average_words_per_subsection": <NUMBER>,
+          "total_subsections": <NUMBER>
+        },
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<PSYCHOLOGICAL_SCALES_DATA>>"
+      - "<<ROLE_PLAY_PROFILE_DATA>>"
+  
+  # ==================================================================================
+  # DIMENSION 10: DISEASE_TIMELINE (13 points)
+  # ==================================================================================
+  disease_timeline:
+    system: |
+      You are a Senior Clinical Data Quality Reviewer evaluating DISEASE_TIMELINE for consistency with current conditions and medical history, list length appropriateness, and event description word count.
+      
+      Focus on cross-referencing timeline with conditions/history, checking timeline length for patient complexity, and assessing event description detail.
+    
+    user_template: |
+      # TASK: Evaluate DISEASE_TIMELINE Section
+      
+      ## PATIENT AGE:
+      <<PATIENT_AGE>>
+      
+      ## CURRENT_CONDITIONS (for reference):
+      <<CURRENT_CONDITIONS_DATA>>
+      
+      ## MEDICAL_HISTORY (for reference):
+      <<MEDICAL_HISTORY_DATA>>
+      
+      ## DISEASE_TIMELINE:
+      <<DISEASE_TIMELINE_DATA>>
+      
+      ---
+      
+      ## EVALUATION CRITERIA (13 points total):
+      
+      **Consistency with Current Conditions and Medical History (6 points, -2 per inconsistency):**
+      - **Timeline event not in conditions/history**: Event in timeline not reflected elsewhere: -2 points
+      - **Condition/history not in timeline**: Major current condition or past condition missing from timeline: -2 points
+      - **Chronological order errors**: Events out of order or illogical sequence: -2 points
+      - **Treatment before diagnosis**: Treatment started before diagnosis without explanation: -2 points
+      - **Duration inconsistencies**: Timeline dates don't match symptom/condition durations: -2 points
+      
+      **List Length Appropriateness (4 points):**
+      - **Complex patient** (age 50+, 6+ current conditions):
+        * Only 1-3 timeline events: -4 points
+        * Only 4-5 timeline events: -2 to -3 points
+        * 6-7 events when 8+ expected: -1 point
+      - **Moderate complexity** (age 40-50, 3-5 current conditions):
+        * Only 1-2 timeline events: -3 to -4 points
+        * 3-4 events when 5+ expected: -1 to -2 points
+      - **Low complexity** (younger or fewer conditions):
+        * Timeline should still have key diagnosis dates: -1 to -2 points if too sparse
+      
+      **Event Description Word Count (3 points):**
+      - Calculate average word count across all event descriptions in disease_timeline
+      - **Scoring**:
+        * 25+ words per event on average: no deduction (excellent detail)
+        * 20-25 words per event on average: -1 point (good detail)
+        * 11-19 words per event on average: -2 points (adequate detail)
+        * <10 words per event on average: -3 points (insufficient detail)
+      
+      ---
+      
+      ## OUTPUT FORMAT:
+      
+      Return a JSON object:
+      ```json
+      {
+        "dimension": "disease_timeline",
+        "max_points": 13,
+        "score": <NUMBER_0_TO_13>,
+        "points_deducted": <NUMBER>,
+        "rationale": "Detailed explanation covering consistency (6 points), list length (4 points), and event description word count (3 points). Include word count calculations and specific examples.",
+        "word_count_metrics": {
+          "average_words_per_event": <NUMBER>,
+          "total_events": <NUMBER>
+        },
+        "issues_found": [
+          {
+            "severity": "minor|moderate|major",
+            "description": "Specific issue description",
+            "points_deducted": <NUMBER>,
+            "recommendation": "How to fix this"
+          }
+        ]
+      }
+      ```
+    
+    placeholders:
+      - "<<PATIENT_AGE>>"
+      - "<<CURRENT_CONDITIONS_DATA>>"
+      - "<<MEDICAL_HISTORY_DATA>>"
+      - "<<DISEASE_TIMELINE_DATA>>"
+
+
+
