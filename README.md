@@ -34,7 +34,7 @@ Obesity care needs clinical, behavioral, and psychological context that typical 
 5. **Refiner (configurable LLM):** Applies the evaluator’s findings, fixes contradictions while preserving identity, and outputs the final patient.
 6. **LLM as Judge:** Optional external scorer that grades 10 dimensions (101-point scale) for realism and completeness.
 
-![Sample simulated patient](figures/samplepatient4.png)
+![Sample simulated patient](figures/samplepatient.png)
 
 ## Patient schema (10 required sections)
 
